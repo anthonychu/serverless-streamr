@@ -1,0 +1,44 @@
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Document</title>
+</head>
+
+<body>
+<!--   Available streams:
+  <div id="streamList">
+    <ul position="absolute">
+      <li>No streams available</li>
+    </ul>
+  </div>
+
+  Stream name: <input type="textbox" id="streamName" value="" />
+  <input type="button" id="startStream" value="Start streaming" />
+  <input type="button" id="stopStream" value="Stop streaming" disabled /> -->
+
+  <pre id="myPre"></pre>
+
+  <script src="https://cdn.jsdelivr.net/npm/@aspnet/signalr@1.1.4/dist/browser/signalr.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/msgpack5@4.2.1/dist/msgpack5.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@aspnet/signalr-protocol-msgpack@1.1.0/dist/browser/signalr-protocol-msgpack.min.js"></script>
+  <script>
+    const asciiCanvas = document.getElementById('myPre')
+
+    const connection = new signalR.HubConnectionBuilder()
+      .withUrl('http://localhost:7071/api')
+      .withHubProtocol(new signalR.protocols.msgpack.MessagePackHubProtocol())
+      .build()
+    
+    connection.on('newFrame', function(frame) {
+      asciiCanvas.innerText = frame
+    })
+
+    connection.start()
+    
+  </script>
+</body>
+
+</html>
