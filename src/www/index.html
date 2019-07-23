@@ -24,16 +24,29 @@
   <script src="https://cdn.jsdelivr.net/npm/@aspnet/signalr@1.1.4/dist/browser/signalr.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/msgpack5@4.2.1/dist/msgpack5.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@aspnet/signalr-protocol-msgpack@1.1.0/dist/browser/signalr-protocol-msgpack.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.2.2/dist/jszip.min.js"></script>
+
   <script>
     const asciiCanvas = document.getElementById('myPre')
+    const useCompression = true
+    const apiBaseUrl = 'http://localhost:7071'
 
+    // receiver
     const connection = new signalR.HubConnectionBuilder()
-      .withUrl('http://localhost:7071/api')
+      .withUrl(apiBaseUrl + '/api')
       .withHubProtocol(new signalR.protocols.msgpack.MessagePackHubProtocol())
       .build()
     
     connection.on('newFrame', function(frame) {
-      asciiCanvas.innerText = frame
+      if (useCompression) {
+        JSZip.loadAsync(frame, { optimizedBinaryString: true }).then(function(unzipped) {
+          unzipped.file('1').async('string').then(function (unzippedAscii) {
+            asciiCanvas.innerText = unzippedAscii
+          })
+        })
+      } else {
+        asciiCanvas.innerText = frame
+      }
     })
 
     connection.start()

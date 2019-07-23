@@ -15,11 +15,23 @@
   <script src="https://cdn.jsdelivr.net/gh/idevelop/ascii-camera@f2e0cb364809c868013e0464ec71c626ac49086a/script/ascii.js"></script>
   <script src="https://cdn.jsdelivr.net/gh/SignalR/sample-StreamR@6199ea8e2c811266c2e6d3c32c18f7745a7792a1/wwwroot/lib/camera.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/axios@0.19.0/dist/axios.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.2.2/dist/jszip.min.js"></script>
 
   <script>
+    const useCompression = true
+    const apiBaseUrl = 'http://localhost:7071'
+
     const button = document.getElementById('startstop')
     const asciiCanvas = document.getElementById("myPre")
     let isStreaming = false
+
+    const zipOptions = {
+      type: 'binarystring',
+      compression: 'DEFLATE',
+      compressionOptions: {
+        level: 9
+      }
+    }
 
     button.onclick = function () {
       if (isStreaming) {
@@ -30,8 +42,8 @@
       }
 
       camera.init({
-        width: 120,
-        height: 90,
+        width: 100,
+        height: 75,
         fps: 10,
         mirror: true,
         targetCanvas: document.getElementById("myCanvas"),
@@ -40,8 +52,18 @@
           ascii.fromCanvas(canvas, {
             contrast: 170,
             callback: function (asciiString) {
-              axios.post('http://localhost:7071/api/sendframe', asciiString)
-              asciiCanvas.innerHTML = asciiString;
+              asciiCanvas.innerText = asciiString
+
+              // sender
+              if (useCompression) {
+                const zip = new JSZip()
+                zip.file('1', asciiString)
+                zip.generateAsync(zipOptions).then(function (payload) {
+                  axios.post(apiBaseUrl + '/api/sendframe', payload)
+                })
+              } else {
+                axios.post(apiBaseUrl + '/api/sendframe', asciiString)
+              }
             }
           })
         },
