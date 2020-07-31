@@ -19,7 +19,7 @@
       "type": "signalRConnectionInfo",
       "direction": "in",
       "name": "connectionInfo",
-      "hubName": "streamr"
+      "hubName": "staticstreamr"
     }
   ]
 }

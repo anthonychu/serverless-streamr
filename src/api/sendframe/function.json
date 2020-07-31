@@ -18,7 +18,7 @@
       "type": "signalR",
       "direction": "out",
       "name": "$return",
-      "hubName": "streamr"
+      "hubName": "staticstreamr"
     }
   ]
 }
