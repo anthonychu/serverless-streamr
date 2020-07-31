@@ -24,7 +24,7 @@ import { MessagePackHubProtocol } from '@microsoft/signalr-protocol-msgpack'
 
 export default {
   name: 'home',
-  data: () => {
+  data() {
     return {
       broadcastingUsers: [
         { id: 'nthonyChu', name: 'Anthony Chu' }

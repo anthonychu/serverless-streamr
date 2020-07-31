@@ -19,7 +19,9 @@
 
   <script>
     const useCompression = true
-    const apiBaseUrl = 'http://localhost:7071'
+    const apiBaseUrl = 'https://serverless-streamr.azurewebsites.net'
+    // const apiBaseUrl = 'http://localhost:7071'
+    const sendFrameFunctionAuthCode = 'qz/zWSw4d/TXZCRvPRtfRVPgz8cZd/mPGXXaI8v68QEitbrbWPCs1g=='
 
     const button = document.getElementById('startstop')
     const asciiCanvas = document.getElementById("myPre")
@@ -42,9 +44,9 @@
       }
 
       camera.init({
-        width: 100,
-        height: 75,
-        fps: 10,
+        width: 60,
+        height: 45,
+        fps: 4,
         mirror: true,
         targetCanvas: document.getElementById("myCanvas"),
 
@@ -55,14 +57,15 @@
               asciiCanvas.innerText = asciiString
 
               // sender
+              const sendUrl = `${apiBaseUrl}/api/sendframe?code=${sendFrameFunctionAuthCode}`
               if (useCompression) {
                 const zip = new JSZip()
                 zip.file('1', asciiString)
                 zip.generateAsync(zipOptions).then(function (payload) {
-                  axios.post(apiBaseUrl + '/api/sendframe', payload)
+                  axios.post(sendUrl, payload)
                 })
               } else {
-                axios.post(apiBaseUrl + '/api/sendframe', asciiString)
+                axios.post(sendUrl, asciiString)
               }
             }
           })
