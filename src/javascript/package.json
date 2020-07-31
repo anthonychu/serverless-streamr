@@ -5,8 +5,6 @@
   "scripts": {
     "test": "echo \"No tests yet...\""
   },
-  "dependencies": {
-    "node-fetch": "^2.6.0"
-  },
+  "dependencies": {},
   "devDependencies": {}
 }

@@ -4,61 +4,205 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="ie=edge">
-  <title>Document</title>
+  <title>Serverless StreamR</title>
+  <style>
+    .container .user-video {
+      display: inline-block;
+      margin: 10px;
+      text-align: center;
+      width: 400px;
+      height: 350px;
+      vertical-align: top;
+    }
+
+    .user-video pre {
+      font-size: 10px;
+    }
+
+    .user-video button {
+      font-size: 16px;
+    }
+
+    #myCanvas {
+      display: none;
+    }
+  </style>
 </head>
 
 <body>
-<!--   Available streams:
-  <div id="streamList">
-    <ul position="absolute">
-      <li>No streams available</li>
-    </ul>
+
+  <div id="app" class="container">
+    <div class="user-video">
+      <div v-if="!isStreaming">
+        <br />
+        <br />
+        Join the fun!
+        <br />&nbsp;
+        <button @click="start">Start streaming</button>
+      </div>
+      <div v-if="isStreaming">
+        <pre>{{ myVideo }}</pre>
+        <button @click="stop">Stop streaming</button>
+      </div>
+
+    </div>
+    <div class="user-video" v-for="video in videos" :key="video.key">
+      <pre>{{ video.frame.ascii }}</pre>
+      <div>{{ video.frame.username }}</div>
+    </div>
+
+    <canvas id="myCanvas"></canvas>
   </div>
 
-  Stream name: <input type="textbox" id="streamName" value="" />
-  <input type="button" id="startStream" value="Start streaming" />
-  <input type="button" id="stopStream" value="Stop streaming" disabled /> -->
-
-  <div id="status">Connecting...</div>
-  <pre id="myPre"></pre>
-
-  <script src="https://cdn.jsdelivr.net/npm/@microsoft/signalr@3.0.0-preview9.19424.4/dist/browser/signalr.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vue@2.6.11/dist/vue.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@microsoft/signalr@3.1.6/dist/browser/signalr.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/msgpack5@4.2.1/dist/msgpack5.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@microsoft/signalr-protocol-msgpack@3.0.0-preview9.19424.4/dist/browser/signalr-protocol-msgpack.min.js"></script>
+  <script
+    src="https://cdn.jsdelivr.net/npm/@microsoft/signalr-protocol-msgpack@3.1.6/dist/browser/signalr-protocol-msgpack.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.2.2/dist/jszip.min.js"></script>
+  <script
+    src="https://cdn.jsdelivr.net/gh/idevelop/ascii-camera@f2e0cb364809c868013e0464ec71c626ac49086a/script/ascii.js"></script>
+  <script
+    src="https://cdn.jsdelivr.net/gh/SignalR/sample-StreamR@6199ea8e2c811266c2e6d3c32c18f7745a7792a1/wwwroot/lib/camera.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/axios@0.19.0/dist/axios.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.2.2/dist/jszip.min.js"></script>
 
   <script>
-    const asciiCanvas = document.getElementById('myPre')
     const useCompression = true
-    const apiBaseUrl = 'https://serverless-streamr.azurewebsites.net'
-    // const apiBaseUrl = 'http://localhost:7071'
+    const isLocal = window.location.href.match(/localhost|127\.0\.\0\.1|0\.0\.0\.0/)
+    const apiBaseUrl = isLocal ? 'http://localhost:7071' : ''
+    const connectionId = new Date().getTime().toString()
 
-    // receiver
-    const connection = new signalR.HubConnectionBuilder()
-      .withUrl(apiBaseUrl + '/api')
-      .withHubProtocol(new signalR.protocols.msgpack.MessagePackHubProtocol())
-      .withAutomaticReconnect()
-      .build()
-    
-    connection.on('newFrame', function(frame) {
-      if (useCompression) {
-        JSZip.loadAsync(frame, { optimizedBinaryString: true }).then(function(unzipped) {
-          unzipped.file('1').async('string').then(function (unzippedAscii) {
-            asciiCanvas.innerText = unzippedAscii
+    const app = new Vue({
+      el: '#app',
+      data: function () {
+        return {
+          videos: [],
+          myVideo: '',
+          isStreaming: false
+        }
+      },
+      methods: {
+        start: async function () {
+          if (!isLocal) {
+            try {
+              const authInfo = await axios.get('/.auth/me')
+              if (!authInfo) {
+                window.location.href = '/.auth/login/github'
+                return
+              }
+            } catch(ex) {
+                window.location.href = '/.auth/login/github'
+                return
+            }
+          }
+
+          const zipOptions = {
+            type: 'binarystring',
+            compression: 'DEFLATE',
+            compressionOptions: {
+              level: 9
+            }
+          }
+
+          if (this.isStreaming) {
+            camera.stop()
+            this.isStreaming = false
+            this.myVideo = ''
+            return
+          }
+
+          camera.init({
+            width: 60,
+            height: 45,
+            fps: 4,
+            mirror: true,
+            targetCanvas: document.getElementById("myCanvas"),
+
+            onFrame: function (canvas) {
+              ascii.fromCanvas(canvas, {
+                contrast: 170,
+                callback: function (asciiString) {
+                  this.myVideo = asciiString
+
+                  // sender
+                  const sendUrl = `${apiBaseUrl}/api/sendframe?connectionId=${connectionId}`
+                  if (useCompression) {
+                    const zip = new JSZip()
+                    zip.file('1', asciiString)
+                    zip.generateAsync(zipOptions).then(function (payload) {
+                      axios.post(sendUrl, payload)
+                    })
+                  } else {
+                    axios.post(sendUrl, asciiString)
+                  }
+                }.bind(this)
+              })
+            }.bind(this),
+
+            onSuccess: function () {
+              this.isStreaming = true
+            }.bind(this),
+
+            onError: function (error) {
+              console.log(error)
+            }.bind(this)
           })
-        })
-      } else {
-        asciiCanvas.innerText = frame
+        },
+        stop() {
+          window.location.reload()
+        }
+      },
+      mounted: function () {
+        const connection = new signalR.HubConnectionBuilder()
+          .withUrl(apiBaseUrl + '/api')
+          .withHubProtocol(new signalR.protocols.msgpack.MessagePackHubProtocol())
+          .withAutomaticReconnect()
+          .build()
+
+        let videos = this.videos
+
+        connection.on('newFrame', function (frame) {
+          if (frame.connectionId === connectionId) {
+            return
+          }
+
+          if (useCompression) {
+            JSZip.loadAsync(frame.ascii, { optimizedBinaryString: true }).then(function (unzipped) {
+              unzipped.file('1').async('string').then(function (unzippedAscii) {
+                frame.ascii = unzippedAscii
+                displayFrame(frame)
+              })
+            })
+          } else {
+            displayFrame(frame)
+          }
+
+          function displayFrame(frame) {
+            key = frame.username + frame.connectionId
+            frame.date = new Date()
+            let video = videos.find(v => v.key === key)
+            if (!video) {
+              video = {
+                key,
+                frame: {}
+              }
+              videos.push(video)
+            }
+            video.frame = frame
+          }
+        }.bind(this))
+
+        const statusDiv = document.getElementById('status')
+
+        // connection.onclose(() => statusDiv.innerText = 'Disconnected')
+        connection.start()
+          .then(() => console.log('connected'))
+          .catch(() => statusDiv.innerText = 'Connection failed')
       }
-    })
+    });
 
-    const statusDiv = document.getElementById('status')
 
-    connection.onclose(() => statusDiv.innerText = 'Disconnected')
-    connection.start()
-      .then(() => statusDiv.innerText = 'Connected!')
-      .catch(() => statusDiv.innerText = 'Connection failed')
-    
   </script>
 </body>
 
