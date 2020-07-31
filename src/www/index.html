@@ -87,7 +87,7 @@
           if (!isLocal) {
             try {
               const authInfo = await axios.get('/.auth/me')
-              if (!authInfo || !authInfo.nickname) {
+              if (!authInfo.data || !authInfo.data.nickname) {
                 window.location.href = '/.auth/login/github'
                 return
               }
