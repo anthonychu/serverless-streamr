@@ -206,6 +206,15 @@
         connection.start()
           .then(() => console.log('connected'))
           .catch(() => statusDiv.innerText = 'Connection failed')
+
+        setInterval(function() {
+          const date = new Date().getTime()
+          for (let i = videos.length; i >= 0; i--){
+            if (date - videos[i].frame.date > 10000) {
+              videos.splice(i, 1)
+            }
+          }
+        }, 5000)
       }
     });
 
